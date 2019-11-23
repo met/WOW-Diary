@@ -26,8 +26,9 @@ SLASH_WOWDIARY1 = "/dia";
 SLASH_WOWDIARY2 = "/wowdiary";
 -- usage /altitem NECK # display neck item for all known alts
 SlashCmdList["WOWDIARY"] = function(msg)
-
-	--TODO make nice display from diary data here, maybe filltered by level 
+	-- /dia silent   --> switch on silent mode, write less msgs
+	-- /dia nosilent --> switch off silent mode
+	-- /dia cur --> show progress on current level
 
 	if msg == "silent" then
 		WowDiarySettings["silent"] = true;
@@ -35,8 +36,9 @@ SlashCmdList["WOWDIARY"] = function(msg)
 	elseif msg == "nosilent" then
 		WowDiarySettings["silent"] = false;
 		print("WoWDiary silent off.");
-	else
-		-- 
+
+	elseif msg == "current" or msg == "cur" then
+		ShowLevelProgress(WowDiaryData, UnitLevel("player"));
 	end
 end
 
@@ -55,7 +57,7 @@ function frame:OnEvent(event, arg1, ...)
 		end
 
 	elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
-		OnCombatEvent();
+		OnCombatEvent(event, arg1, ...);
 
 	elseif event == "CHAT_MSG_MONEY" then
 		--print("PENIZE");
@@ -88,11 +90,14 @@ function frame:OnEvent(event, arg1, ...)
 end
 
 function onMapEvent(event, arg1, ...)
-	print("Map event", event, arg1, ...);
-	print(GetZoneText(), "-", GetSubZoneText());
+	if event ~= "ZONE_CHANGED" then
+		print("Map event", event, arg1, ...);
+		print(GetZoneText(), "-", GetSubZoneText());
+	end
 
 	if GetRealZoneText() ~= GetZoneText() then
 		print("REAL zone name differs");
+		print(GetZoneText(), "-", GetSubZoneText());
 		print(GetRealZoneText());
 	end
 
@@ -102,50 +107,70 @@ function onMapEvent(event, arg1, ...)
 end
 
 function OnCombatEvent()
-	local timestamp, combatEvent, hideCaster, srcGUID, srcName, srcFlags, sourceRaidFlags, dstGUID, dstName, dstFlags, destRaidFlags, arg12, arg13, arg14 = CombatLogGetCurrentEventInfo();
+	local timestamp, combatEvent, hideCaster, srcGUID, srcName, srcFlags, sourceRaidFlags, dstGUID, dstName, dstFlags, destRaidFlags, arg12, arg13 = CombatLogGetCurrentEventInfo();
 	-- Those arguments appear for all combat event variants.
 	-- print(CombatLogGetCurrentEventInfo());
-	if srcGUID == UnitGUID("player") then	
-		print("My", combatEvent);
-	else
-		if WowDiarySettings["silent"] == false then
+	if WowDiarySettings["silent"] == false then
+		if srcGUID == UnitGUID("player") then
+			print("My", combatEvent);
+		else
 			print("??", combatEvent);
 		end
 	end
 
-	if combatEvent == "PARTY_KILL" and srcGUID == UnitGUID("player") then
-		-- player made another kill
-		WriteNewKill(WowDiaryData, UnitLevel("player"), dstName);
+	if srcGUID == UnitGUID("player") then
 
-	elseif combatEvent == "SPELL_CAST_SUCCESS" and srcGUID == UnitGUID("player") and arg13 == "Pick Pocket" then
-		-- player cast pick pocketing, but we do not know how much money he earned
-		--print("Kradu");
-		--print(CombatLogGetCurrentEventInfo());
-		-- TODO if I want record what player pickpocketed, then I need to listen more events with money
-		-- TODO and check that they follow this pickpocketing event
-		-- TODO all 3 step process is neccesary to distinguish pickpocketing from corpse or chest looting
-	elseif combatEvent == "SPELL_DAMAGE" and srcGUID == UnitGUID("player") then
-		print(CombatLogGetCurrentEventInfo());
-	end	
+		if combatEvent == "PARTY_KILL" then
+			-- player made another kill
+			WriteNewKill(WowDiaryData, UnitLevel("player"), dstName);
+
+		elseif combatEvent == "SWING_DAMAGE" then
+			local swingDamage, overkill = select(12, CombatLogGetCurrentEventInfo());
+			print("Doing SWING_DAMAGE", swingDamage);
+			--print(CombatLogGetCurrentEventInfo());
+
+		elseif combatEvent == "RANGE_DAMAGE" then
+			local rangeName, _, rangeDamage, overkill = select(13, CombatLogGetCurrentEventInfo());
+			print("Doing RANGE_DAMAGE", rangeName, rangeDamage);
+			--print(CombatLogGetCurrentEventInfo());
+
+		elseif combatEvent == "SPELL_DAMAGE" then
+			local spellName, _, spellDamage, overkill = select(13, CombatLogGetCurrentEventInfo());
+			print("Doing SPELL_DAMAGE", spellName, spellDamage);
+			--print(CombatLogGetCurrentEventInfo());
+
+		elseif combatEvent == "SPELL_CAST_SUCCESS" and arg13 == "Pick Pocket" then
+			-- player cast pick pocketing, but we do not know how much money he earned
+			--print("Kradu");
+			--print(CombatLogGetCurrentEventInfo());
+			-- TODO if I want record what player pickpocketed, then I need to listen more events with money
+			-- TODO and check that they follow this pickpocketing event
+			-- TODO all 3 step process is neccesary to distinguish pickpocketing from corpse or chest looting
+
+		end	
+
+	end
+
+
 end
 
 
 -- record another kill made by player at current level
-function WriteNewKill(setts, level, name)
+function WriteNewKill(diary, level, name)
 
-	if setts[level] == nill then
-		setts[level] = {};
+	if diary[level] == nill then
+		diary[level] = {};
 	end
 
-	if setts[level]["kills"] == nill then
-		setts[level]["kills"] = {};
+	if diary[level]["kills"] == nill then
+		diary[level]["kills"] = {};
 	end
 
-	if setts[level]["kills"][name] == nill then
-		setts[level]["kills"][name] = 0;
+	if diary[level]["kills"][name] == nill then
+		diary[level]["kills"][name] = 0;
 	end
 
-	setts[level]["kills"][name] = setts[level]["kills"][name] + 1;
+	diary[level]["kills"][name] = diary[level]["kills"][name] + 1;
 
 end
 
@@ -199,6 +224,31 @@ function WriteQuestDBItem(diary, questID, questName, questLevel)
 		diary["DB"]["quests"][questID]["name"] = questName;
 		diary["DB"]["quests"][questID]["level"] = questLevel;
 	end
+end
+
+function ShowLevelProgress(diary, level)
+	if diary[level] == nill then
+		print("No progress on level", level);
+		return;
+	end
+
+	local numberKills = 0;
+
+	if diary[level]["kills"] ~= nill then
+		for k,v in pairs(diary[level]["kills"]) do
+			numberKills = numberKills + v;
+		end
+	end
+	print("Killed", numberKills, "creatures on level", level);
+
+	local numberQuests = 0;
+
+	if diary[level]["quests"] ~= nill then
+		numberQuests = #diary[level]["quests"];
+	end
+
+	print("Finished", numberQuests, "quests on level", level);
+
 end
 
 -- initial settings, set after instalation or reset
