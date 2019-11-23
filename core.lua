@@ -30,7 +30,13 @@ SlashCmdList["WOWDIARY"] = function(msg)
 	-- /dia nosilent --> switch off silent mode
 	-- /dia cur --> show progress on current level
 
-	if msg == "silent" then
+	if msg == "" then
+		print("WoWDiary addon");
+		print("Usage:");
+		print("/dia cur");
+		print("/dia silent");
+		print("/dia nosilent");
+	elseif msg == "silent" then
 		WowDiarySettings["silent"] = true;
 		print("WoWDiary silent on.");
 	elseif msg == "nosilent" then
@@ -101,7 +107,8 @@ function onMapEvent(event, arg1, ...)
 
 	-- TODO should I write zones if I am flying? Probably not, it is not real visiting
 
-	if event ~= "ZONE_CHANGED" then
+	if event == "ZONE_CHANGED_NEW_AREA"  then
+		-- need to check and debug little
 		print("=====================================");
 		print("=====================================");
 		print("=====================================");
@@ -119,7 +126,7 @@ function onMapEvent(event, arg1, ...)
 		print(GetRealZoneText());
 	end
 
-	if event == "ZONE_CHANGED" then
+	if event == "ZONE_CHANGED" or event == "ZONE_CHANGED_INDOORS" then
 		WriteVisitedZone(WowDiaryData, UnitLevel("player"), GetZoneText(), GetSubZoneText());
 	end
 end
@@ -289,7 +296,7 @@ end
 
 function ShowLevelProgress(diary, level)
 	if diary[level] == nill then
-		print("No progress on level", level);
+		print("No progress on level", level .. ".");
 		return;
 	end
 
@@ -300,7 +307,7 @@ function ShowLevelProgress(diary, level)
 			numberKills = numberKills + v;
 		end
 	end
-	print("Killed", numberKills, "creatures on level", level);
+	print("Killed", numberKills, "creatures on level", level .. ".");
 
 	local numberQuests = 0;
 
@@ -308,7 +315,7 @@ function ShowLevelProgress(diary, level)
 		numberQuests = #diary[level]["quests"];
 	end
 
-	print("Finished", numberQuests, "quests on level", level);
+	print("Finished", numberQuests, "quests on level", level .. ".");
 
 	local numberDeaths = 0;
 
@@ -316,11 +323,11 @@ function ShowLevelProgress(diary, level)
 		numberDeaths = diary[level]["deaths"]["count"];
 	end
 
-	print("Played died", numberDeaths, "times on level", level);
+	print("Played died", numberDeaths, "times on level", level .. ".");
 
 	if diary[level]["skills"] ~= nill then
 		for k,v in pairs(diary[level]["skills"]) do
-			print("Player reached level", v, "in", k, "on level", level);
+			print("Player reached level", v, "in", k, "on level", level .. ".");
 		end
 
 	end
