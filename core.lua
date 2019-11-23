@@ -78,19 +78,37 @@ function frame:OnEvent(event, arg1, ...)
 	elseif event == "QUEST_TURNED_IN" then
 		WriteFinishedQuest(WowDiaryData, UnitLevel("player"), arg1);
 
+	elseif event == "PLAYER_DEAD" then
+		--print(event, arg1, ...);
+		WritePlayerDeath(WowDiaryData, UnitLevel("player"));
+
 	elseif event == "ZONE_CHANGED" or event == "ZONE_CHANGED_INDOORS" or event == "ZONE_CHANGED_NEW_AREA" then
-		-- ZONE_CHANGED_INDOORS sometimes happen when I entered into some building, but sometimes only ZONE_CHANGED happens
-		-- ZONE_CHANGED_NEW_AREA I did not debug yet
-
-		-- TODO should I write zones if I am flying? Probably not, it is not real visiting
-
 		onMapEvent(event, arg1, ...);
+
+	elseif event == "CHAT_MSG_SKILL" then
+		-- Msg like:
+		-- Your skill in Fishing has increased to 131.
+		local skill, skilllevel = string.match(arg1, "Your skill in (.+) has increased to (%d+).");
+		WriteUpdatedSkills(WowDiaryData, UnitLevel("player"), skill, skilllevel);
 	end
 
 end
 
 function onMapEvent(event, arg1, ...)
+
+	-- ZONE_CHANGED_INDOORS sometimes happen when I entered into some building, but sometimes only ZONE_CHANGED happens
+	-- ZONE_CHANGED_NEW_AREA I did not debug yet, happens when player enter game or change main zone
+
+	-- TODO should I write zones if I am flying? Probably not, it is not real visiting
+
 	if event ~= "ZONE_CHANGED" then
+		print("=====================================");
+		print("=====================================");
+		print("=====================================");
+		print("=====================================");
+		print("=====================================");
+		print("=====================================");
+		print("=====================================");
 		print("Map event", event, arg1, ...);
 		print(GetZoneText(), "-", GetSubZoneText());
 	end
@@ -151,6 +169,16 @@ function OnCombatEvent()
 
 	end
 
+	if dstGUID == UnitGUID("player") then
+		if combatEvent == "SWING_DAMAGE" then
+
+		elseif combatEvent == "RANGE_DAMAGE" then
+
+		elseif combatEvent == "SPELL_DAMAGE" then
+
+		end
+	end
+
 
 end
 
@@ -207,6 +235,39 @@ function WriteVisitedZone(diary, level, zoneName, subzoneName)
 	end
 end
 
+-- record reached skill level
+function WriteUpdatedSkills(diary, level, skill, skilllevel)
+
+	if diary[level] == nill then
+		diary[level] = {};
+	end
+
+	if diary[level]["skills"] == nill then
+		diary[level]["skills"] = {};
+	end
+
+	diary[level]["skills"][skill] = skilllevel;
+end
+
+-- record new player death on current level
+function WritePlayerDeath(diary, level)
+
+	-- TODO if we look at last combat event that made damage to player we can find who killed him
+	if diary[level] == nill then
+		diary[level] = {};
+	end
+
+	if diary[level]["deaths"] == nill then
+		diary[level]["deaths"] = {};
+	end
+
+	if diary[level]["deaths"]["count"] == nill then
+		diary[level]["deaths"]["count"] = 0;
+	end
+
+	diary[level]["deaths"]["count"] = diary[level]["deaths"]["count"] + 1;
+end
+
 -- record Quest item do the Quest Database
 function WriteQuestDBItem(diary, questID, questName, questLevel)
 
@@ -249,6 +310,20 @@ function ShowLevelProgress(diary, level)
 
 	print("Finished", numberQuests, "quests on level", level);
 
+	local numberDeaths = 0;
+
+	if diary[level]["deaths"] ~= nill and diary[level]["deaths"]["count"] ~= nill then
+		numberDeaths = diary[level]["deaths"]["count"];
+	end
+
+	print("Played died", numberDeaths, "times on level", level);
+
+	if diary[level]["skills"] ~= nill then
+		for k,v in pairs(diary[level]["skills"]) do
+			print("Player reached level", v, "in", k, "on level", level);
+		end
+
+	end
 end
 
 -- initial settings, set after instalation or reset
@@ -269,5 +344,8 @@ frame:RegisterEvent("ZONE_CHANGED");
 frame:RegisterEvent("ZONE_CHANGED_INDOORS");
 frame:RegisterEvent("ZONE_CHANGED_NEW_AREA");
 
+frame:RegisterEvent("PLAYER_DEAD");
+
+frame:RegisterEvent("CHAT_MSG_SKILL");
 
 frame:SetScript("OnEvent", frame.OnEvent);
