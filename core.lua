@@ -95,7 +95,11 @@ function frame:OnEvent(event, arg1, ...)
 		-- Msg like:
 		-- Your skill in Fishing has increased to 131.
 		local skill, skilllevel = string.match(arg1, "Your skill in (.+) has increased to (%d+).");
-		WriteUpdatedSkills(WowDiaryData, UnitLevel("player"), skill, skilllevel);
+		-- we must check it match succeded, there or other messages for this event as well
+		-- e.g. You have gained the First Aid skill.
+		if skill ~= nill and skilllevel ~= nill then
+			WriteUpdatedSkills(WowDiaryData, UnitLevel("player"), skill, skilllevel);
+		end
 	end
 
 end
