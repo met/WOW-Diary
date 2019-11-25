@@ -24,11 +24,11 @@ SOFTWARE.
 
 SLASH_WOWDIARY1 = "/dia";
 SLASH_WOWDIARY2 = "/wowdiary";
--- usage /altitem NECK # display neck item for all known alts
 SlashCmdList["WOWDIARY"] = function(msg)
 	-- /dia silent   --> switch on silent mode, write less msgs
 	-- /dia nosilent --> switch off silent mode
 	-- /dia cur --> show progress on current level
+	-- /dia NUMBER --> show progress on level NUMBER
 
 	if msg == "" then
 		print("WoWDiary addon");
@@ -45,6 +45,9 @@ SlashCmdList["WOWDIARY"] = function(msg)
 
 	elseif msg == "current" or msg == "cur" then
 		ShowLevelProgress(WowDiaryData, UnitLevel("player"));
+
+	elseif tonumber(msg) ~=nill then
+		ShowLevelProgress(WowDiaryData, tonumber(msg));
 	end
 end
 
@@ -299,6 +302,11 @@ function WriteQuestDBItem(diary, questID, questName, questLevel)
 end
 
 function ShowLevelProgress(diary, level)
+	if diary == nill or level == nill then
+		print("ERROR: Call ShowLevelProgress with nil parameters.");
+		return;
+	end
+
 	if diary[level] == nill then
 		print("No progress on level", level .. ".");
 		return;
