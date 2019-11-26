@@ -22,6 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --]]
 
+local cYellow = "\124cFFFFFF00";
+local cWhite = "\124cFFFFFFFF";
+
 SLASH_WOWDIARY1 = "/dia";
 SLASH_WOWDIARY2 = "/wowdiary";
 SlashCmdList["WOWDIARY"] = function(msg)
@@ -30,12 +33,18 @@ SlashCmdList["WOWDIARY"] = function(msg)
 	-- /dia cur --> show progress on current level
 	-- /dia NUMBER --> show progress on level NUMBER
 
+	-- for multiword 
+	local msg1, msg2 = strsplit(" ", msg);
+
 	if msg == "" then
-		print("WoWDiary addon");
-		print("Usage:");
+		print(cYellow.."WoWDiary addon");
+		print(cYellow.."Usage:");
 		print("/dia cur");
 		print("/dia silent");
 		print("/dia nosilent");
+		print("/dia LEVELNUMBER");
+		print("/dia LEVELNUMBER kills");
+
 	elseif msg == "silent" then
 		WowDiarySettings["silent"] = true;
 		print("WoWDiary silent on.");
@@ -46,8 +55,13 @@ SlashCmdList["WOWDIARY"] = function(msg)
 	elseif msg == "current" or msg == "cur" then
 		ShowLevelProgress(WowDiaryData, UnitLevel("player"));
 
-	elseif tonumber(msg) ~=nill then
+	elseif tonumber(msg) ~=nil then
 		ShowLevelProgress(WowDiaryData, tonumber(msg));
+
+	elseif msg1 ~= nil and tonumber(msg1) ~= nil and msg2 ~= nil and msg2 ~= "" then
+	 	--Filter by level and keyword, e.g "1 kills", "2 deaths"
+
+	 	ShowFilterProgress(WowDiaryData, tonumber(msg1), msg2);
 	end
 end
 
@@ -56,12 +70,12 @@ local frame = CreateFrame("FRAME");
 function frame:OnEvent(event, arg1, ...)
 
 	if event == "ADDON_LOADED" and arg1 == "WoWDiary" then
-		if WowDiarySettings == nill then
+		if WowDiarySettings == nil then
 			WowDiarySettings = {};
 			DefaultSettings(WowDiarySettings);
 		end
 
-		if WowDiaryData == nill and arg1 == "WoWDiary" then
+		if WowDiaryData == nil and arg1 == "WoWDiary" then
 			WowDiaryData = {};
 		end
 
@@ -100,7 +114,7 @@ function frame:OnEvent(event, arg1, ...)
 		local skill, skilllevel = string.match(arg1, "Your skill in (.+) has increased to (%d+).");
 		-- we must check it match succeded, there or other messages for this event as well
 		-- e.g. You have gained the First Aid skill.
-		if skill ~= nill and skilllevel ~= nill then
+		if skill ~= nil and skilllevel ~= nil then
 			WriteUpdatedSkills(WowDiaryData, UnitLevel("player"), skill, skilllevel);
 		end
 	end
@@ -120,15 +134,12 @@ function onMapEvent(event, arg1, ...)
 		print("=====================================");
 		print("=====================================");
 		print("=====================================");
-		print("=====================================");
-		print("=====================================");
-		print("=====================================");
-		print("Map event", event, arg1, ...);
+		print(cYellow.."Map event", event, arg1, ...);
 		print(GetZoneText(), "-", GetSubZoneText());
 	end
 
 	if GetRealZoneText() ~= GetZoneText() then
-		print("REAL zone name differs");
+		print(cYellow.."REAL zone name differs");
 		print(GetZoneText(), "-", GetSubZoneText());
 		print(GetRealZoneText());
 	end
@@ -200,15 +211,15 @@ end
 -- record another kill made by player at current level
 function WriteNewKill(diary, level, name)
 
-	if diary[level] == nill then
+	if diary[level] == nil then
 		diary[level] = {};
 	end
 
-	if diary[level]["kills"] == nill then
+	if diary[level]["kills"] == nil then
 		diary[level]["kills"] = {};
 	end
 
-	if diary[level]["kills"][name] == nill then
+	if diary[level]["kills"][name] == nil then
 		diary[level]["kills"][name] = 0;
 	end
 
@@ -217,11 +228,11 @@ function WriteNewKill(diary, level, name)
 end
 
 function WriteFinishedQuest(diary, level, questID)
-	if diary[level] == nill then
+	if diary[level] == nil then
 		diary[level] = {};
 	end
 
-	if diary[level]["quests"] == nill then
+	if diary[level]["quests"] == nil then
 		diary[level]["quests"] = {};
 	end
 
@@ -230,21 +241,21 @@ end
 
 function WriteVisitedZone(diary, level, zoneName, subzoneName)
 
-	if diary[level] == nill then
+	if diary[level] == nil then
 		diary[level] = {};
 	end
 
-	if diary[level]["zones"] == nill then
+	if diary[level]["zones"] == nil then
 		diary[level]["zones"] = {};
 	end
 
 	-- write visited zone
-	if diary[level]["zones"][zoneName] == nill then
+	if diary[level]["zones"][zoneName] == nil then
 		diary[level]["zones"][zoneName] = {};
 	end
 
 	-- if there is subzone name, write visites subzone
-	if subzoneName ~= nill and subzoneName ~= "" and diary[level]["zones"][zoneName][subzoneName] == nill then
+	if subzoneName ~= nil and subzoneName ~= "" and diary[level]["zones"][zoneName][subzoneName] == nil then
 		diary[level]["zones"][zoneName][subzoneName] = 1;
 	end
 end
@@ -252,11 +263,11 @@ end
 -- record reached skill level
 function WriteUpdatedSkills(diary, level, skill, skilllevel)
 
-	if diary[level] == nill then
+	if diary[level] == nil then
 		diary[level] = {};
 	end
 
-	if diary[level]["skills"] == nill then
+	if diary[level]["skills"] == nil then
 		diary[level]["skills"] = {};
 	end
 
@@ -267,15 +278,15 @@ end
 function WritePlayerDeath(diary, level)
 
 	-- TODO if we look at last combat event that made damage to player we can find who killed him
-	if diary[level] == nill then
+	if diary[level] == nil then
 		diary[level] = {};
 	end
 
-	if diary[level]["deaths"] == nill then
+	if diary[level]["deaths"] == nil then
 		diary[level]["deaths"] = {};
 	end
 
-	if diary[level]["deaths"]["count"] == nill then
+	if diary[level]["deaths"]["count"] == nil then
 		diary[level]["deaths"]["count"] = 0;
 	end
 
@@ -285,16 +296,16 @@ end
 -- record Quest item do the Quest Database
 function WriteQuestDBItem(diary, questID, questName, questLevel)
 
-	if diary["DB"] == nill then
+	if diary["DB"] == nil then
 		diary["DB"] = {};
 	end
 
-	if diary["DB"]["quests"] == nill then
+	if diary["DB"]["quests"] == nil then
 		diary["DB"]["quests"] = {};
 	end
 
 	-- if this questID is in DB already, do not need to write again
-	if diary["DB"]["quests"][questID] == nill then
+	if diary["DB"]["quests"][questID] == nil then
 		diary["DB"]["quests"][questID] = {};
 		diary["DB"]["quests"][questID]["name"] = questName;
 		diary["DB"]["quests"][questID]["level"] = questLevel;
@@ -302,19 +313,21 @@ function WriteQuestDBItem(diary, questID, questName, questLevel)
 end
 
 function ShowLevelProgress(diary, level)
-	if diary == nill or level == nill then
+	if diary == nil or level == nil then
 		print("ERROR: Call ShowLevelProgress with nil parameters.");
 		return;
 	end
 
-	if diary[level] == nill then
+	if diary[level] == nil then
 		print("No progress on level", level .. ".");
 		return;
 	end
 
+	print(cYellow.."Player progress on level "..level..":");
+
 	local numberKills = 0;
 
-	if diary[level]["kills"] ~= nill then
+	if diary[level]["kills"] ~= nil then
 		for k,v in pairs(diary[level]["kills"]) do
 			numberKills = numberKills + v;
 		end
@@ -323,7 +336,7 @@ function ShowLevelProgress(diary, level)
 
 	local numberQuests = 0;
 
-	if diary[level]["quests"] ~= nill then
+	if diary[level]["quests"] ~= nil then
 		numberQuests = #diary[level]["quests"];
 	end
 
@@ -331,18 +344,71 @@ function ShowLevelProgress(diary, level)
 
 	local numberDeaths = 0;
 
-	if diary[level]["deaths"] ~= nill and diary[level]["deaths"]["count"] ~= nill then
+	if diary[level]["deaths"] ~= nil and diary[level]["deaths"]["count"] ~= nil then
 		numberDeaths = diary[level]["deaths"]["count"];
 	end
 
 	print("Played died", numberDeaths, "times on level", level .. ".");
 
-	if diary[level]["skills"] ~= nill then
+	if diary[level]["skills"] ~= nil then
 		for k,v in pairs(diary[level]["skills"]) do
 			print("Player reached level", v, "in", k, "on level", level .. ".");
 		end
 
 	end
+end
+
+
+function ShowFilterProgress(diary, level, filter)
+
+	if diary == nil or level == nil or filter == nil or filter == "" then
+		print("ERROR: Call ShowFilterProgress with nil parameters.");
+		return;
+	end
+
+	if diary[level] == nil then
+		print("No progress on level", level .. ".");
+		return;
+	end
+
+	if filter == "kills" then
+
+		if diary[level].kills == nil then
+			print(cYellow.."Player killed nothing on level "..level..".");
+		else
+			print(cYellow.."Player killed these creatures on level "..level..":");
+
+			for k,v in pairs(diary[level].kills) do
+				print(k,v);
+			end
+		end
+
+	elseif filter == "deaths" then
+
+		if diary[level].deaths == nil or diary[level].deaths.count == nil then
+			print(cYellow.."Player did not die on level "..level..".");
+		else
+			print(cYellow.."Player died "..diary[level].deaths.count.." times on level "..level..".");
+		end
+
+	elseif filter == "zones" then
+
+		if diary[level].zones == nill then 
+			print(cYellow.."Player visited no zones on level "..level..".");
+		else
+			print(cYellow.."Player visited these zones on level "..level..":");
+
+			for k,v in pairs(diary[level].zones) do
+				print(k);
+
+				for k1,v1 in pairs(diary[level].zones[k]) do
+					print("  - "..k1);
+				end
+			end
+		end
+
+	end
+
 end
 
 -- initial settings, set after instalation or reset
