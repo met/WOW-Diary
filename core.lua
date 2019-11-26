@@ -23,7 +23,10 @@ SOFTWARE.
 --]]
 
 local cYellow = "\124cFFFFFF00";
+local cRed = "\124cFFFF0000";
 local cWhite = "\124cFFFFFFFF";
+
+local msgPrefix = cYellow.."[WoWDiary] "..cWhite;
 
 SLASH_WOWDIARY1 = "/dia";
 SLASH_WOWDIARY2 = "/wowdiary";
@@ -70,9 +73,13 @@ local frame = CreateFrame("FRAME");
 function frame:OnEvent(event, arg1, ...)
 
 	if event == "ADDON_LOADED" and arg1 == "WoWDiary" then
+		print(msgPrefix.."version "..GetAddOnMetadata("WowDiary", "version"));
+		print(msgPrefix.."Use /dia for help");
+
 		if WowDiarySettings == nil then
 			WowDiarySettings = {};
 			DefaultSettings(WowDiarySettings);
+			print(msgPrefix.."Loaded for the first time. Setting defaults.");
 		end
 
 		if WowDiaryData == nil and arg1 == "WoWDiary" then
@@ -122,30 +129,35 @@ function frame:OnEvent(event, arg1, ...)
 end
 
 function onMapEvent(event, arg1, ...)
-
-	-- ZONE_CHANGED_INDOORS sometimes happen when I entered into some building, but sometimes only ZONE_CHANGED happens
 	-- ZONE_CHANGED_NEW_AREA I did not debug yet, happens when player enter game or change main zone
 
-	-- TODO should I write zones if I am flying? Probably not, it is not real visiting
 
 	if event == "ZONE_CHANGED_NEW_AREA"  then
 		-- need to check and debug little
+		print(cRed.."=====================================");
 		print("=====================================");
 		print("=====================================");
-		print("=====================================");
-		print("=====================================");
+		print(cRed.."=====================================");
 		print(cYellow.."Map event", event, arg1, ...);
 		print(GetZoneText(), "-", GetSubZoneText());
+		-- TODO we cannot rely on GetZoneText(), GetSubZoneText() here,
+		--      but maybe can register callback and write zone name after small time
+		--      can use OnUpdate event, that fires every UI frames (25 ms) and write around 1/2 sec after
+		--      ZONE_CHANGED_NEW_AREA happend
 	end
 
 	if GetRealZoneText() ~= GetZoneText() then
-		print(cYellow.."REAL zone name differs");
+		print(cRed.."REAL zone name differs");
 		print(GetZoneText(), "-", GetSubZoneText());
 		print(GetRealZoneText());
 	end
 
 	if event == "ZONE_CHANGED" or event == "ZONE_CHANGED_INDOORS" then
-		WriteVisitedZone(WowDiaryData, UnitLevel("player"), GetZoneText(), GetSubZoneText());
+		if UnitOnTaxi("player") then
+			print(cRed.."ZONE_CHANGED but player is on taxi, we do not record this zone.");
+		else
+			WriteVisitedZone(WowDiaryData, UnitLevel("player"), GetZoneText(), GetSubZoneText());
+		end
 	end
 end
 
@@ -314,7 +326,7 @@ end
 
 function ShowLevelProgress(diary, level)
 	if diary == nil or level == nil then
-		print("ERROR: Call ShowLevelProgress with nil parameters.");
+		print(msgPrefix.."ERROR: Call ShowLevelProgress with nil parameters.");
 		return;
 	end
 
@@ -362,7 +374,7 @@ end
 function ShowFilterProgress(diary, level, filter)
 
 	if diary == nil or level == nil or filter == nil or filter == "" then
-		print("ERROR: Call ShowFilterProgress with nil parameters.");
+		print(msgPrefix.."ERROR: Call ShowFilterProgress with nil parameters.");
 		return;
 	end
 
