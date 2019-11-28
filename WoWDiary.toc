@@ -1,8 +1,9 @@
 ## Interface: 11302
 ## Title: WoW Diary
-## Notes: Log important events of you character
+## Notes: Log important events of you character. Fully automatic.
 ## Author: Martin Hassman
 ## Version: 1.0 
+## SavedVariables: WowDiarySharedDB, WowDiarySharedData
 ## SavedVariablesPerCharacter: WowDiarySettings, WowDiaryData
 
 core.lua

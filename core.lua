@@ -82,9 +82,18 @@ function frame:OnEvent(event, arg1, ...)
 			print(msgPrefix.."Loaded for the first time. Setting defaults.");
 		end
 
-		if WowDiaryData == nil and arg1 == "WoWDiary" then
+		if WowDiaryData == nil then
 			WowDiaryData = {};
 		end
+
+		if WowDiarySharedDB == nill then
+			WowDiarySharedDB = {};
+		end
+
+		if WowDiarySharedData == nill then
+			WowDiarySharedData = {};
+		end
+
 
 	elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
 		OnCombatEvent(event, arg1, ...);
@@ -128,23 +137,41 @@ function frame:OnEvent(event, arg1, ...)
 
 end
 
-function onMapEvent(event, arg1, ...)
-	-- ZONE_CHANGED_NEW_AREA I did not debug yet, happens when player enter game or change main zone
 
+local tasks = {}; -- our tasks queue
 
-	if event == "ZONE_CHANGED_NEW_AREA"  then
-		-- need to check and debug little
-		print(cRed.."=====================================");
-		print("=====================================");
-		print("=====================================");
-		print(cRed.."=====================================");
-		print(cYellow.."Map event", event, arg1, ...);
-		print(GetZoneText(), "-", GetSubZoneText());
-		-- TODO we cannot rely on GetZoneText(), GetSubZoneText() here,
-		--      but maybe can register callback and write zone name after small time
-		--      can use OnUpdate event, that fires every UI frames (25 ms) and write around 1/2 sec after
-		--      ZONE_CHANGED_NEW_AREA happend
+-- OnUpdate event is triggered cca every 25ms
+-- we use this event for scheduling our tasks
+function frame:OnUpdate()
+
+	if tasks and tasks[1] then
+		local curTask = tasks[1];
+
+		-- Is it time to process our task now?
+		if GetTime() >= curTask.time then
+			table.remove(tasks, 1);
+
+			--print(cRed.."=====================================");
+			--print("frame:OnUpdate - making our task");
+			--print(curTask.time, curTask.taskname);
+
+			if curTask.taskname == "NEW_ZONE" then
+				--print(GetZoneText(), "-", GetSubZoneText());
+				-- and now finally we can write new visited zone
+				WriteVisitedZone(WowDiaryData, UnitLevel("player"), GetZoneText(), GetSubZoneText());
+			end
+
+		end
+
+		-- if there are not another tasks in queue, unregister handler
+		if #tasks == 0 then
+			frame:SetScript("OnUpdate", nil);
+			--print(cRed.."UPDATE HANDLER UNREGISTERED");
+		end
 	end
+end
+
+function onMapEvent(event, arg1, ...)
 
 	if GetRealZoneText() ~= GetZoneText() then
 		print(cRed.."REAL zone name differs");
@@ -152,13 +179,28 @@ function onMapEvent(event, arg1, ...)
 		print(GetRealZoneText());
 	end
 
-	if event == "ZONE_CHANGED" or event == "ZONE_CHANGED_INDOORS" then
-		if UnitOnTaxi("player") then
-			print(cRed.."ZONE_CHANGED but player is on taxi, we do not record this zone.");
-		else
-			WriteVisitedZone(WowDiaryData, UnitLevel("player"), GetZoneText(), GetSubZoneText());
-		end
+	-- do not track zones visited by player in taxi
+	if UnitOnTaxi("player") then
+		return;
 	end
+
+	if event == "ZONE_CHANGED" or event == "ZONE_CHANGED_INDOORS" then
+		WriteVisitedZone(WowDiaryData, UnitLevel("player"), GetZoneText(), GetSubZoneText());
+	
+	elseif event == "ZONE_CHANGED_NEW_AREA" then
+		-- this is more complicated. UI may not have correct GetZoneText, GetSubZoneText yet
+		-- we register task that check for GetZoneText, GetSubZoneText very soon
+
+		--print(cRed.."=====================================");
+		--print(cYellow.."Map event", event, arg1, ...);
+		--print(GetZoneText(), "-", GetSubZoneText());
+
+		local delayInSeconds = 2;
+		table.insert(tasks, {["time"] = (GetTime() + delayInSeconds), ["taskname"] = "NEW_ZONE"});
+		frame:SetScript("OnUpdate", frame.OnUpdate);
+		--print(cRed.."TASK REGISTERED");
+	end
+
 end
 
 function OnCombatEvent()
