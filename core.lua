@@ -127,11 +127,35 @@ function frame:OnEvent(event, arg1, ...)
 	elseif event == "CHAT_MSG_SKILL" then
 		-- Msg like:
 		-- Your skill in Fishing has increased to 131.
-		local skill, skilllevel = string.match(arg1, "Your skill in (.+) has increased to (%d+).");
+		local skill, skilllevel = string.match(arg1, "^Your skill in (.+) has increased to (%d+).");
 		-- we must check it match succeded, there or other messages for this event as well
 		-- e.g. You have gained the First Aid skill.
 		if skill ~= nil and skilllevel ~= nil then
 			WriteUpdatedSkills(WowDiaryData, UnitLevel("player"), skill, skilllevel);
+		end
+
+	elseif event == "CHAT_MSG_COMBAT_XP_GAIN" then
+		local mobName, gainedXP = string.match(arg1, "^(.+) dies, you gain (%d+) experience(.*)");
+		local restedBonusXP = string.match(arg1, "%+(%d+) exp Rested bonus");
+
+		--print("CHAT_MSG_COMBAT_XP_GAIN", arg1, ...);
+		--print(mobName, gainedXP);
+		--print("Rested bonus:", restedBonusXP);
+
+		-- Check for succesfull match. Some other chat messages raises this event too.
+		if mobName ~= nill and gainedXP ~= nill and tonumber(gainedXP) ~= nil then
+
+			gainedXP = tonumber(gainedXP);
+			local percentLevelXP = round(gainedXP / UnitXPMax("player") * 100);
+
+			if restedBonusXP == nil or tonumber(restedBonusXP) == nil then
+				restedBonusXP = 0;
+			else
+				restedBonusXP = tonumber(restedBonusXP);
+			end
+
+			print("Killed "..mobName..", gained "..gainedXP.." = "..percentLevelXP.."% of current level.");
+			WriteKillsXP(WowDiaryData, UnitLevel("player"), mobName, gainedXP, restedBonusXP);
 		end
 	end
 
@@ -281,6 +305,32 @@ function WriteNewKill(diary, level, name)
 
 end
 
+-- record gained XP for new Kill
+function WriteKillsXP(diary, level, mobName, xp, restXP)
+
+	if diary == nil or level == nil or type(level) ~= "number" or mobName == nil or xp == nil or type(xp) ~= "number" or restXP == nil or type(restXP) ~= "number" then
+		print(msgPrefix.."ERROR: WriteKillsXP called with nil or wrong parameters.");
+		return;
+	end
+
+	if diary[level] == nil then
+		diary[level] = {};
+	end
+
+	if diary[level].killsXP == nill then
+		diary[level].killsXP = {};
+	end
+
+	if diary[level].killsXP[mobName] == nill then
+		diary[level].killsXP[mobName] = 0;
+	end
+
+	diary[level].killsXP[mobName] = diary[level].killsXP[mobName] + xp;
+
+	--TODO we could handle rest XP too
+
+end
+
 function WriteFinishedQuest(diary, level, questID)
 	if diary[level] == nil then
 		diary[level] = {};
@@ -365,6 +415,7 @@ function WriteQuestDBItem(diary, questID, questName, questLevel)
 		diary["DB"]["quests"][questID]["level"] = questLevel;
 	end
 end
+
 
 function ShowLevelProgress(diary, level)
 	if diary == nil or level == nil then
@@ -465,6 +516,14 @@ function ShowFilterProgress(diary, level, filter)
 
 end
 
+-- Round numbers, Usage:
+-- round(5.6) => 6
+-- round(5.678, 2) => 5.68
+function round(num, numDecimalPlaces)
+  local mult = 10^(numDecimalPlaces or 0)
+  return math.floor(num * mult + 0.5) / mult
+end
+
 -- initial settings, set after instalation or reset
 function DefaultSettings(setts)
 	setts["silent"] = false;	-- in silent mode we write less info to console
@@ -486,5 +545,8 @@ frame:RegisterEvent("ZONE_CHANGED_NEW_AREA");
 frame:RegisterEvent("PLAYER_DEAD");
 
 frame:RegisterEvent("CHAT_MSG_SKILL");
+frame:RegisterEvent("CHAT_MSG_COMBAT_XP_GAIN");
+frame:RegisterEvent("PLAYER_XP_UPDATE");
+
 
 frame:SetScript("OnEvent", frame.OnEvent);
