@@ -154,7 +154,11 @@ function frame:OnEvent(event, arg1, ...)
 				restedBonusXP = tonumber(restedBonusXP);
 			end
 
-			print("Killed "..mobName..", gained "..gainedXP.." = "..percentLevelXP.."% of current level.");
+			if percentLevelXP > 2 then 
+				print("Killed "..mobName..", gained "..gainedXP.." = "..cYellow..percentLevelXP.."% of current level.");
+			else
+				print("Killed "..mobName..", gained "..gainedXP.." = "..percentLevelXP.."% of current level.");
+			end
 			WriteKillsXP(WowDiaryData, UnitLevel("player"), mobName, gainedXP, restedBonusXP);
 		end
 	end
