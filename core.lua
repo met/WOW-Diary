@@ -25,6 +25,9 @@ SOFTWARE.
 local cYellow = "\124cFFFFFF00";
 local cRed = "\124cFFFF0000";
 local cWhite = "\124cFFFFFFFF";
+local cBlue =  "\124cFF0000FF";
+
+local cBlue1 = "\124cFF6896FF";
 
 local msgPrefix = cYellow.."[WoWDiary] "..cWhite;
 
@@ -161,8 +164,15 @@ function frame:OnEvent(event, arg1, ...)
 			end
 			WriteKillsXP(WowDiaryData, UnitLevel("player"), mobName, gainedXP, restedBonusXP);
 		end
-	end
 
+	elseif event == "UPDATE_MOUSEOVER_UNIT" then
+		if UnitCanAttack("player", "mouseover") then
+			local mobName, realmName = UnitName("mouseover");
+			if mobName ~= nil then
+				UpdateTooltip(WowDiaryData, GameTooltip, UnitLevel("player"), UnitXPMax("player"), mobName);
+			end
+		end
+	end
 end
 
 
@@ -420,6 +430,34 @@ function WriteQuestDBItem(diary, questID, questName, questLevel)
 	end
 end
 
+-- Show in tooltip how many mobs killed on this level and how much XP gained
+function UpdateTooltip(diary, tooltip, level, xpLevelMax, mobName)
+	assert(diary, "UpdateTooltip - diary is nil");
+	assert(tooltip, "UpdateTooltip - tooltip is nil");
+	assert(level, "UpdateTooltip - level is nil");
+	assert(xpLevelMax, "UpdateTooltip - xpLevelMax is nil");
+	assert(mobName, "UpdateTooltip - mobName is nil");
+
+	if diary[level] == nil or diary[level].kills == nil or diary[level].killsXP == nil then
+		return;
+	end
+
+	-- TODO make custom settings to hide/show tooltip info
+
+	if tonumber(diary[level].kills[mobName]) ~= nil then
+		tooltip:AddLine(cYellow.."Killed on this level "..tostring(diary[level].kills[mobName]).." times.");
+	end
+
+	if tonumber(diary[level].killsXP[mobName]) ~= nil then
+		local killsXP = tonumber(diary[level].killsXP[mobName]);
+		local percentLevelXP = round(killsXP / xpLevelMax * 100);
+
+--		tooltip:AddLine(cBlue1.."Gained XP on this level "..tostring(diary[level].killsXP[mobName]).." ("..percentLevelXP.."%).");
+		tooltip:AddLine(cBlue1.."Gained XP on this level "..percentLevelXP.."%.");
+	end
+
+	tooltip:Show();
+end
 
 function ShowLevelProgress(diary, level)
 	if diary == nil or level == nil then
@@ -552,5 +590,6 @@ frame:RegisterEvent("CHAT_MSG_SKILL");
 frame:RegisterEvent("CHAT_MSG_COMBAT_XP_GAIN");
 frame:RegisterEvent("PLAYER_XP_UPDATE");
 
+frame:RegisterEvent("UPDATE_MOUSEOVER_UNIT");
 
 frame:SetScript("OnEvent", frame.OnEvent);
