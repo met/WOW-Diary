@@ -34,8 +34,10 @@ local msgPrefix = cYellow.."[WoWDiary] "..cWhite;
 SLASH_WOWDIARY1 = "/dia";
 SLASH_WOWDIARY2 = "/wowdiary";
 SlashCmdList["WOWDIARY"] = function(msg)
-	-- /dia silent   --> switch on silent mode, write less msgs
-	-- /dia nosilent --> switch off silent mode
+	-- /dia silent      --> switch on silent mode, write less msgs
+	-- /dia nosilent    --> switch off silent mode
+	-- /dia tooltips    --> show info in enemy tooltips
+	-- /dia notooltips  --> do not show infor in enemy tooltips
 	-- /dia cur --> show progress on current level
 	-- /dia NUMBER --> show progress on level NUMBER
 
@@ -48,15 +50,26 @@ SlashCmdList["WOWDIARY"] = function(msg)
 		print("/dia cur");
 		print("/dia silent");
 		print("/dia nosilent");
+		print("/dia tooltips");
+		print("/dia notooltips");
 		print("/dia LEVELNUMBER");
 		print("/dia LEVELNUMBER kills");
 
 	elseif msg == "silent" then
 		WowDiarySettings["silent"] = true;
 		print("WoWDiary silent on.");
+
 	elseif msg == "nosilent" then
 		WowDiarySettings["silent"] = false;
 		print("WoWDiary silent off.");
+
+	elseif msg == "tooltips" then
+		WowDiarySettings["tooltips"] = true;
+		print("WoWDiary tooltips on.");
+
+	elseif msg == "notooltips" then
+		WowDiarySettings["tooltips"] = false;
+		print("WoWDiary tooltips off.");
 
 	elseif msg == "current" or msg == "cur" then
 		ShowLevelProgress(WowDiaryData, UnitLevel("player"));
@@ -97,6 +110,8 @@ function frame:OnEvent(event, arg1, ...)
 			WowDiarySharedData = {};
 		end
 
+		WoWSessionData = {}; -- not saved, keep only for one session
+		LogSessionEntry(WoWSessionData, "NEW_SESSION");
 
 	elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
 		OnCombatEvent(event, arg1, ...);
@@ -116,13 +131,16 @@ function frame:OnEvent(event, arg1, ...)
 
 		local questName, questLevel, _, _, _, _, _, questID = GetQuestLogTitle(arg1);
 		WriteQuestDBItem(WowDiaryData, questID, questName, questLevel);
+		LogSessionEntry(WoWSessionData, { content = "START_QUEST", name = questName, id = questID, level = questLevel })
 
 	elseif event == "QUEST_TURNED_IN" then
 		WriteFinishedQuest(WowDiaryData, UnitLevel("player"), arg1);
+		LogSessionEntry(WoWSessionData, { content = "FINISH_QUEST", id = arg1 });
 
 	elseif event == "PLAYER_DEAD" then
 		--print(event, arg1, ...);
 		WritePlayerDeath(WowDiaryData, UnitLevel("player"));
+		LogSessionEntry(WoWSessionData, "PLAYER_DIED");
 
 	elseif event == "ZONE_CHANGED" or event == "ZONE_CHANGED_INDOORS" or event == "ZONE_CHANGED_NEW_AREA" then
 		onMapEvent(event, arg1, ...);
@@ -135,6 +153,7 @@ function frame:OnEvent(event, arg1, ...)
 		-- e.g. You have gained the First Aid skill.
 		if skill ~= nil and skilllevel ~= nil then
 			WriteUpdatedSkills(WowDiaryData, UnitLevel("player"), skill, skilllevel);
+			LogSessionEntry(WoWSessionData, { content = "SKILL_UP", skillname = skill, skilllevel = skilllevel});
 		end
 
 	elseif event == "CHAT_MSG_SYSTEM" then
@@ -145,6 +164,7 @@ function frame:OnEvent(event, arg1, ...)
 		if itemName ~= nil then
 			--print("Matched recipe item:", itemName);
 			WriteLearnedRecipe(WowDiaryData, UnitLevel("player"), itemName);
+			LogSessionEntry(WoWSessionData, { content = "LEARNED_RECIPE", name = itemName});
 		end
 
 	elseif event == "CHAT_MSG_COMBAT_XP_GAIN" then
@@ -173,12 +193,13 @@ function frame:OnEvent(event, arg1, ...)
 				print("Killed "..mobName..", gained "..gainedXP.." = "..percentLevelXP.."% of current level.");
 			end
 			WriteKillsXP(WowDiaryData, UnitLevel("player"), mobName, gainedXP, restedBonusXP);
+			LogSessionEntry(WoWSessionData, { content = "KILLED", name = mobName, xp = gainedXP });
 		end
 
 	elseif event == "UPDATE_MOUSEOVER_UNIT" then
 		if UnitCanAttack("player", "mouseover") then
 			local mobName, realmName = UnitName("mouseover");
-			if mobName ~= nil then
+			if mobName ~= nil and WowDiarySettings["tooltips"] == true then
 				UpdateTooltip(WowDiaryData, GameTooltip, UnitLevel("player"), UnitXPMax("player"), mobName);
 			end
 		end
@@ -234,6 +255,7 @@ function onMapEvent(event, arg1, ...)
 
 	if event == "ZONE_CHANGED" or event == "ZONE_CHANGED_INDOORS" then
 		WriteVisitedZone(WowDiaryData, UnitLevel("player"), GetZoneText(), GetSubZoneText());
+		LogSessionEntry(WoWSessionData, { content = "CHANGED_ZONE", zone = GetZoneText(), subzone = GetSubZoneText() });
 	
 	elseif event == "ZONE_CHANGED_NEW_AREA" then
 		-- this is more complicated. UI may not have correct GetZoneText, GetSubZoneText yet
@@ -598,7 +620,19 @@ end
 -- initial settings, set after instalation or reset
 function DefaultSettings(setts)
 	setts["silent"] = false;	-- in silent mode we write less info to console
+	setts["tooltips"] = true;	-- show numbers of killed on enemy tooltips
 end
+
+function LogSessionEntry(log, entry)
+	assert(log, "LogSessionEntry - log is nil");
+	assert(entry, "LogSessionEntry - entry is nil");
+
+	local timestamp = time();
+	local readableDate = date(nil, timestamp); -- human readable string for this unixtime
+	local logItem = {date = readableDate, timestamp = timestamp, content = entry};
+	table.insert(log, logItem);
+end
+
 
 frame:RegisterEvent("ADDON_LOADED");
 frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
