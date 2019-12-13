@@ -137,6 +137,16 @@ function frame:OnEvent(event, arg1, ...)
 			WriteUpdatedSkills(WowDiaryData, UnitLevel("player"), skill, skilllevel);
 		end
 
+	elseif event == "CHAT_MSG_SYSTEM" then
+		-- there is huge amount of different messages for this event, see https://www.townlong-yak.com/framexml/live/GlobalStrings.lua
+		-- we look for ERR_LEARN_RECIPE_S = "You have learned how to create a new item: %s."
+		local itemName = string.match(arg1, "^You have learned how to create a new item: (.+).");
+
+		if itemName ~= nil then
+			--print("Matched recipe item:", itemName);
+			WriteLearnedRecipe(WowDiaryData, UnitLevel("player"), itemName);
+		end
+
 	elseif event == "CHAT_MSG_COMBAT_XP_GAIN" then
 		local mobName, gainedXP = string.match(arg1, "^(.+) dies, you gain (%d+) experience(.*)");
 		local restedBonusXP = string.match(arg1, "%+(%d+) exp Rested bonus");
@@ -392,6 +402,25 @@ function WriteUpdatedSkills(diary, level, skill, skilllevel)
 	diary[level]["skills"][skill] = skilllevel;
 end
 
+-- record new learned recipe
+function WriteLearnedRecipe(diary, level, itemName)
+	assert(diary, "WriteLearnedRecipe - diary is nil");
+	assert(level, "WriteLearnedRecipe - level is nil");
+	assert(itemName, "WriteLearnedRecipe - itemName is nil");
+
+	if diary[level] == nil then
+		diary[level] = {};
+	end
+
+	if diary[level].recipes == nil then
+		diary[level].recipes = {};
+	end
+
+	if diary[level].recipes[itemName] == nil then
+		table.insert(diary[level].recipes, itemName);
+	end
+end
+
 -- record new player death on current level
 function WritePlayerDeath(diary, level)
 
@@ -589,6 +618,8 @@ frame:RegisterEvent("PLAYER_DEAD");
 frame:RegisterEvent("CHAT_MSG_SKILL");
 frame:RegisterEvent("CHAT_MSG_COMBAT_XP_GAIN");
 frame:RegisterEvent("PLAYER_XP_UPDATE");
+frame:RegisterEvent("CHAT_MSG_SYSTEM");
+
 
 frame:RegisterEvent("UPDATE_MOUSEOVER_UNIT");
 
