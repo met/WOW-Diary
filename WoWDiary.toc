@@ -4,6 +4,6 @@
 ## Author: Martin Hassman
 ## Version: 1.0 
 ## SavedVariables: WowDiarySharedDB, WowDiarySharedData
-## SavedVariablesPerCharacter: WowDiarySettings, WowDiaryData
+## SavedVariablesPerCharacter: WowDiarySettings, WowDiaryData, WoWSessionData
 
 core.lua

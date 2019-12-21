@@ -38,6 +38,8 @@ SlashCmdList["WOWDIARY"] = function(msg)
 	-- /dia nosilent    --> switch off silent mode
 	-- /dia tooltips    --> show info in enemy tooltips
 	-- /dia notooltips  --> do not show infor in enemy tooltips
+	-- /dia session     --> save session data
+	-- /dia nosession   --> not save session data
 	-- /dia cur --> show progress on current level
 	-- /dia NUMBER --> show progress on level NUMBER
 
@@ -52,6 +54,8 @@ SlashCmdList["WOWDIARY"] = function(msg)
 		print("/dia nosilent");
 		print("/dia tooltips");
 		print("/dia notooltips");
+		print("/dia session");
+		print("/dia nosession");
 		print("/dia LEVELNUMBER");
 		print("/dia LEVELNUMBER kills");
 
@@ -70,6 +74,14 @@ SlashCmdList["WOWDIARY"] = function(msg)
 	elseif msg == "notooltips" then
 		WowDiarySettings["tooltips"] = false;
 		print("WoWDiary tooltips off.");
+
+	elseif msg == "session" then
+		WowDiarySettings["session"] = true;
+		print("WowDiary log session on.");
+
+	elseif msg == "nosession" then
+		WowDiarySettings["session"] = false;
+		print("WowDiary log session off.");
 
 	elseif msg == "current" or msg == "cur" then
 		ShowLevelProgress(WowDiaryData, UnitLevel("player"));
@@ -110,7 +122,14 @@ function frame:OnEvent(event, arg1, ...)
 			WowDiarySharedData = {};
 		end
 
-		WoWSessionData = {}; -- not saved, keep only for one session
+		-- finished, now is all migration completed
+		--migrateQuestsToSharedDB(WowDiaryData, WowDiarySharedDB);
+
+ 		-- TODO handle deletion of old session data
+		if WoWSessionData == nill then
+			WoWSessionData = {};
+		end
+
 		LogSessionEntry(WoWSessionData, "NEW_SESSION");
 
 	elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
@@ -130,7 +149,7 @@ function frame:OnEvent(event, arg1, ...)
 		-- print(GetQuestLogTitle(arg1));
 
 		local questName, questLevel, _, _, _, _, _, questID = GetQuestLogTitle(arg1);
-		WriteQuestDBItem(WowDiaryData, questID, questName, questLevel);
+		WriteQuestDBItem(WowDiarySharedDB, questID, questName, questLevel);
 		LogSessionEntry(WoWSessionData, { content = "START_QUEST", name = questName, id = questID, level = questLevel })
 
 	elseif event == "QUEST_TURNED_IN" then
@@ -204,6 +223,8 @@ function frame:OnEvent(event, arg1, ...)
 			end
 		end
 	end
+
+	-- TODO log abandoned quest in LogSessionEntry
 end
 
 
@@ -463,21 +484,17 @@ function WritePlayerDeath(diary, level)
 end
 
 -- record Quest item do the Quest Database
-function WriteQuestDBItem(diary, questID, questName, questLevel)
+function WriteQuestDBItem(sharedDB, questID, questName, questLevel)
 
-	if diary["DB"] == nil then
-		diary["DB"] = {};
-	end
-
-	if diary["DB"]["quests"] == nil then
-		diary["DB"]["quests"] = {};
+	if sharedDB["quests"] == nil then
+		sharedDB["quests"] = {};
 	end
 
 	-- if this questID is in DB already, do not need to write again
-	if diary["DB"]["quests"][questID] == nil then
-		diary["DB"]["quests"][questID] = {};
-		diary["DB"]["quests"][questID]["name"] = questName;
-		diary["DB"]["quests"][questID]["level"] = questLevel;
+	if sharedDB["quests"][questID] == nil then
+		sharedDB["quests"][questID] = {};
+		sharedDB["quests"][questID]["name"] = questName;
+		sharedDB["quests"][questID]["level"] = questLevel;
 	end
 end
 
@@ -609,6 +626,109 @@ function ShowFilterProgress(diary, level, filter)
 
 end
 
+function ShowTest()
+
+	-- From http://wowprogramming.com/snippets/Create_a_dialog-themed_window_for_text_11.html
+	local MyFrame = CreateFrame("Frame")
+	MyFrame:ClearAllPoints()
+	MyFrame:SetBackdrop(StaticPopup1:GetBackdrop())
+	MyFrame:SetHeight(300)
+	MyFrame:SetWidth(300)
+
+	MyFrame.text = MyFrame:CreateFontString(nil, "BACKGROUND", "GameFontNormal")
+	MyFrame.text:SetAllPoints()
+	MyFrame.text:SetText("YOUR HELP TEXT HERE")
+	MyFrame:SetPoint("CENTER", 0, 0)
+
+end
+
+function ShowTest1(text)
+
+	-- From http://wowprogramming.com/snippets/Simple_Scroll_Frame_35.html
+	--parent frame 
+	local frame = CreateFrame("Frame", "MyFrame", UIParent) 
+	frame:SetSize(300, 300) 
+	frame:SetPoint("CENTER") 
+	frame:SetBackdrop(StaticPopup1:GetBackdrop())
+	--local texture = frame:CreateTexture() 
+	--texture:SetAllPoints() 
+	--texture:SetTexture(1,1,1,1) 
+	--frame.background = texture 
+
+	--scrollframe 
+	scrollframe = CreateFrame("ScrollFrame", nil, frame) 
+	scrollframe:SetPoint("TOPLEFT", 10, -10) 
+	scrollframe:SetPoint("BOTTOMRIGHT", -10, 10) 
+	local texture = scrollframe:CreateTexture() 
+	texture:SetAllPoints() 
+	texture:SetTexture(.5,.5,.5,1) 
+	frame.scrollframe = scrollframe 
+
+	--scrollbar 
+	scrollbar = CreateFrame("Slider", nil, scrollframe, "UIPanelScrollBarTemplate") 
+	scrollbar:SetPoint("TOPLEFT", frame, "TOPRIGHT", 4, -16) 
+	scrollbar:SetPoint("BOTTOMLEFT", frame, "BOTTOMRIGHT", 4, 16) 
+	scrollbar:SetMinMaxValues(1, 200) 
+	scrollbar:SetValueStep(1) 
+	scrollbar.scrollStep = 1 
+	scrollbar:SetValue(0) 
+	scrollbar:SetWidth(16) 
+	scrollbar:SetScript("OnValueChanged", 
+	function (self, value) 
+	self:GetParent():SetVerticalScroll(value) 
+	end) 
+	local scrollbg = scrollbar:CreateTexture(nil, "BACKGROUND") 
+	scrollbg:SetAllPoints(scrollbar) 
+	scrollbg:SetTexture(0, 0, 0, 0.4) 
+	frame.scrollbar = scrollbar 
+
+	--content frame 
+	local content = CreateFrame("Frame", nil, scrollframe) 
+	content:SetSize(250, 250) 
+	content.text = content:CreateFontString(nil, "BACKGROUND", "GameFontNormal")
+	content.text:SetAllPoints()
+	content.text:SetText(text)
+
+
+	--close button
+	local closeButton = CreateFrame("Button", "$parentCloseButton", frame, "UIPanelCloseButton")
+	closeButton:SetWidth(30)
+	closeButton:SetHeight(30)
+	closeButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
+	closeButton:SetScript("OnClick", function(...) frame:Hide(); end)
+
+	scrollframe.content = content 
+	scrollframe:SetScrollChild(content)
+
+end
+
+function ShowLog()
+	local text = "";
+
+	for k,v in pairs(WoWSessionData) do
+		if v.content then
+			if type(v.content) == "string" then
+				text = text.."\n"..v.content;
+			elseif type(v.content) == "table" and type(v.content.content) == "string" then
+				text = text.."\n"..v.content.content; 
+				if v.content.content == "CHANGED_ZONE" then
+					text = text.." "..v.content.zone.." - "..v.content.subzone;
+				elseif v.content.content == "KILLED" then
+					text = text.." "..v.content.name;
+				elseif v.content.content == "SKILL_UP" then
+					text = text.." "..v.content.skillname.." "..v.content.skilllevel;
+				elseif v.content.content == "START_QUEST" then
+					text = text.." "..v.content.name;
+				end
+			end 
+		end
+	end
+
+
+	ShowTest1(text);
+end
+
+
 -- Round numbers, Usage:
 -- round(5.6) => 6
 -- round(5.678, 2) => 5.68
@@ -621,18 +741,58 @@ end
 function DefaultSettings(setts)
 	setts["silent"] = false;	-- in silent mode we write less info to console
 	setts["tooltips"] = true;	-- show numbers of killed on enemy tooltips
+	setts["session"] = false	-- not log session by default
 end
 
 function LogSessionEntry(log, entry)
 	assert(log, "LogSessionEntry - log is nil");
 	assert(entry, "LogSessionEntry - entry is nil");
 
-	local timestamp = time();
-	local readableDate = date(nil, timestamp); -- human readable string for this unixtime
-	local logItem = {date = readableDate, timestamp = timestamp, content = entry};
-	table.insert(log, logItem);
+	if WowDiarySettings["session"] then
+		local timestamp = time();
+		local readableDate = date(nil, timestamp); -- human readable string for this unixtime
+		local logItem = {date = readableDate, timestamp = timestamp, content = entry};
+		table.insert(log, logItem);
+	end
 end
 
+-- Old code, used for migration from previous addon version. Move gathered quests info to shared DB
+-- could be deleted
+function migrateQuestsToSharedDB(diary, sharedDB)
+	assert(diary, "migrateQuestsToSharedDB - diary is nil");
+	assert(sharedDB, "migrateQuestsToSharedDB - sharedDB is nil");
+
+	print("Migrating quests to shared DB");
+
+	if sharedDB.quests == nil then
+		sharedDB.quests = {};
+	end
+
+	if diary.DB ~= nil and diary.DB.quests ~= nil then
+
+		for k,v in pairs(diary.DB.quests) do
+
+			--print(k,v, sharedDB.quests[k]);
+
+			if sharedDB.quests[k] == nil then
+				sharedDB.quests[k] = v;
+				print("Migrate", k);
+			end
+
+			diary.DB.quests[k] = nil;
+			print("Delete old", k);
+		end
+
+		-- finally delete personal DB table
+		if #diary.DB.quests == 0 then
+			diary.DB.quests = nil;
+
+			if #diary.DB == 0 then
+				diary.DB = nil;
+			end
+		end
+	end
+end
 
 frame:RegisterEvent("ADDON_LOADED");
 frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
