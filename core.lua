@@ -269,8 +269,8 @@ function onMapEvent(event, arg1, ...)
 		print(GetRealZoneText());
 	end
 
-	-- do not track zones visited by player in taxi
-	if UnitOnTaxi("player") then
+	-- do not track zones visited by player in taxi or by ghost
+	if UnitOnTaxi("player") or UnitIsDeadOrGhost("player") then
 		return;
 	end
 
