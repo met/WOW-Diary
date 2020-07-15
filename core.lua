@@ -314,17 +314,17 @@ function OnCombatEvent()
 
 		elseif combatEvent == "SWING_DAMAGE" then
 			local swingDamage, overkill = select(12, CombatLogGetCurrentEventInfo());
-			print("Doing SWING_DAMAGE", swingDamage);
+			--print("Doing SWING_DAMAGE", swingDamage);
 			--print(CombatLogGetCurrentEventInfo());
 
 		elseif combatEvent == "RANGE_DAMAGE" then
 			local rangeName, _, rangeDamage, overkill = select(13, CombatLogGetCurrentEventInfo());
-			print("Doing RANGE_DAMAGE", rangeName, rangeDamage);
+			--print("Doing RANGE_DAMAGE", rangeName, rangeDamage);
 			--print(CombatLogGetCurrentEventInfo());
 
 		elseif combatEvent == "SPELL_DAMAGE" then
 			local spellName, _, spellDamage, overkill = select(13, CombatLogGetCurrentEventInfo());
-			print("Doing SPELL_DAMAGE", spellName, spellDamage);
+			--print("Doing SPELL_DAMAGE", spellName, spellDamage);
 			--print(CombatLogGetCurrentEventInfo());
 
 		elseif combatEvent == "SPELL_CAST_SUCCESS" and arg13 == "Pick Pocket" then
