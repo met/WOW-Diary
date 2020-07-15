@@ -1,4 +1,4 @@
-## Interface: 11303
+## Interface: 11305
 ## Title: WoW Diary
 ## Notes: Log important events of you character. Fully automatic.
 ## Author: Martin Hassman
