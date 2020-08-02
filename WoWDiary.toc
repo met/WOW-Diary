@@ -3,7 +3,9 @@
 ## Notes: Log important events of you character. Fully automatic.
 ## Author: Martin Hassman
 ## Version: 1.0 
+## OptionalDeps: WoWUnit, Errlogger
 ## SavedVariables: WowDiarySharedDB, WowDiarySharedData
 ## SavedVariablesPerCharacter: WowDiarySettings, WowDiaryData, WoWSessionData
 
 core.lua
+logger.lua

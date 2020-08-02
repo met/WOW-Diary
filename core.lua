@@ -22,6 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --]]
 
+
+local addonName, NS = ...;
+
 local cYellow = "\124cFFFFFF00";
 local cRed = "\124cFFFF0000";
 local cWhite = "\124cFFFFFFFF";
@@ -129,6 +132,8 @@ function frame:OnEvent(event, arg1, ...)
 		if WoWSessionData == nill then
 			WoWSessionData = {};
 		end
+
+		NS.settings = WowDiarySettings;
 
 		LogSessionEntry(WoWSessionData, "NEW_SESSION");
 
@@ -264,9 +269,7 @@ end
 function onMapEvent(event, arg1, ...)
 
 	if GetRealZoneText() ~= GetZoneText() then
-		print(cRed.."REAL zone name differs");
-		print(GetZoneText(), "-", GetSubZoneText());
-		print(GetRealZoneText());
+		NS.logDebug("Zone names differs, zoneText=", GetZoneText(), ", subZoneText=", GetSubZoneText(), "realZoneText", GetRealZoneText())
 	end
 
 	-- do not track zones visited by player in taxi or by ghost
@@ -741,7 +744,8 @@ end
 function DefaultSettings(setts)
 	setts["silent"] = false;	-- in silent mode we write less info to console
 	setts["tooltips"] = true;	-- show numbers of killed on enemy tooltips
-	setts["session"] = false	-- not log session by default
+	setts["session"] = false;	-- not log session by default
+	setts["debug"] = false;	
 end
 
 function LogSessionEntry(log, entry)
