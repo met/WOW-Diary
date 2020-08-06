@@ -269,7 +269,7 @@ end
 function onMapEvent(event, arg1, ...)
 
 	if GetRealZoneText() ~= GetZoneText() then
-		NS.logDebug("Zone names differs, zoneText=", GetZoneText(), ", subZoneText=", GetSubZoneText(), "realZoneText", GetRealZoneText())
+		NS.logDebug("Zone names differs, zoneText=", GetZoneText(), ", subZoneText=", GetSubZoneText(), "realZoneText=", GetRealZoneText())
 	end
 
 	-- do not track zones visited by player in taxi or by ghost
@@ -742,7 +742,7 @@ end
 
 -- initial settings, set after instalation or reset
 function DefaultSettings(setts)
-	setts["silent"] = false;	-- in silent mode we write less info to console
+	setts["silent"] = true;	-- in silent mode we write less info to console
 	setts["tooltips"] = true;	-- show numbers of killed on enemy tooltips
 	setts["session"] = false;	-- not log session by default
 	setts["debug"] = false;	
